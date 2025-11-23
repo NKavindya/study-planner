@@ -20,14 +20,27 @@ def is_weekend(date_str: str) -> bool:
 
 def get_date_range(start_date: str, end_date: str) -> list:
     """Get list of dates between start and end"""
-    start = datetime.strptime(start_date, "%Y-%m-%d")
-    end = datetime.strptime(end_date, "%Y-%m-%d")
-    dates = []
-    current = start
-    while current <= end:
-        dates.append(current.strftime("%Y-%m-%d"))
-        current += timedelta(days=1)
-    return dates
+    try:
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        
+        if start > end:
+            raise ValueError("Start date must be before or equal to end date")
+        
+        dates = []
+        current = start
+        while current <= end:
+            dates.append(current.strftime("%Y-%m-%d"))
+            current += timedelta(days=1)
+        
+        if not dates:
+            raise ValueError("Date range is invalid")
+        
+        return dates
+    except ValueError as e:
+        raise e
+    except Exception as e:
+        raise ValueError(f"Invalid date format: {str(e)}")
 
 def get_day_name(date_str: str) -> str:
     """Get day name from date string"""

@@ -29,18 +29,15 @@ const ExamForm = ({ onSuccess, initialData = null }) => {
       console.error('Failed to fetch subjects:', err);
     }
   };
-    const handleChange = (e) => {
-        const { name, value, type } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]:
-                type === "number"
-                    ? parseFloat(value) || 0
-                    : isNaN(parseInt(value))
-                        ? value
-                        : parseInt(value) || 0,
-        }));
-    };
+  const handleChange = (e) => {
+    const { name, value, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'number' 
+        ? (name === 'chapters' ? parseInt(value) || 0 : parseFloat(value) || 0)
+        : value
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();

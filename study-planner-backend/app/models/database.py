@@ -87,6 +87,7 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     # Migrate existing tables if needed
     migrate_subjects_table()
+    migrate_study_plans_table()
 
 def migrate_subjects_table():
     """Add new columns to subjects table if they don't exist"""
@@ -119,6 +120,78 @@ def migrate_subjects_table():
                     print(f"Error adding questionnaire_results column: {e}")
     except Exception as e:
         print(f"Error during migration: {e}")
+
+def migrate_study_plans_table():
+    """Add new columns to study_plans table if they don't exist"""
+    from sqlalchemy import inspect, text
+    
+    try:
+        inspector = inspect(engine)
+        
+        # Check if study_plans table exists
+        if 'study_plans' not in inspector.get_table_names():
+            return
+        
+        columns = [col['name'] for col in inspector.get_columns('study_plans')]
+        
+        with engine.begin() as conn:
+            # Add item_id column if it doesn't exist
+            if 'item_id' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN item_id INTEGER"))
+                    print("Added item_id column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding item_id column: {e}")
+            
+            # Add item_type column if it doesn't exist
+            if 'item_type' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN item_type VARCHAR"))
+                    print("Added item_type column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding item_type column: {e}")
+            
+            # Add item_name column if it doesn't exist
+            if 'item_name' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN item_name VARCHAR"))
+                    print("Added item_name column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding item_name column: {e}")
+            
+            # Add day column if it doesn't exist
+            if 'day' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN day VARCHAR"))
+                    print("Added day column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding day column: {e}")
+            
+            # Add time_slot column if it doesn't exist
+            if 'time_slot' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN time_slot VARCHAR"))
+                    print("Added time_slot column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding time_slot column: {e}")
+            
+            # Add hours column if it doesn't exist
+            if 'hours' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN hours FLOAT"))
+                    print("Added hours column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding hours column: {e}")
+            
+            # Add category column if it doesn't exist
+            if 'category' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN category VARCHAR"))
+                    print("Added category column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding category column: {e}")
+    except Exception as e:
+        print(f"Error during study_plans migration: {e}")
 
 def get_db():
     db = SessionLocal()

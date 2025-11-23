@@ -2,11 +2,17 @@ from sqlalchemy.orm import Session
 from app.models.database import StudyPlan
 
 def create_study_plan(db: Session, plan_data: dict):
-    plan = StudyPlan(**plan_data)
-    db.add(plan)
-    db.commit()
-    db.refresh(plan)
-    return plan
+    try:
+        plan = StudyPlan(**plan_data)
+        db.add(plan)
+        db.commit()
+        db.refresh(plan)
+        return plan
+    except Exception as e:
+        db.rollback()
+        print(f"Error creating study plan: {e}")
+        print(f"Plan data: {plan_data}")
+        raise
 
 def get_study_plans(db: Session):
     return db.query(StudyPlan).all()

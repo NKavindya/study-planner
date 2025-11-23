@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { getSubjects } from '../api/subjects';
+import { useNavigate } from 'react-router-dom';
+import { getAssignments } from '../api/assignments';
+import { getExams } from '../api/exams';
 import { generatePlan } from '../api/plan';
 import './GeneratePlan.css';
 
 const GeneratePlan = () => {
-  const [subjects, setSubjects] = useState([]);
+  const navigate = useNavigate();
+  const [assignments, setAssignments] = useState([]);
+  const [exams, setExams] = useState([]);
   const [formData, setFormData] = useState({
     available_hours_per_day: 3,
     start_date: new Date().toISOString().split('T')[0],
@@ -15,15 +19,19 @@ const GeneratePlan = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchSubjects();
+    fetchData();
   }, []);
 
-  const fetchSubjects = async () => {
+  const fetchData = async () => {
     try {
-      const data = await getSubjects();
-      setSubjects(data);
+      const [assignmentsData, examsData] = await Promise.all([
+        getAssignments().catch(() => []),
+        getExams().catch(() => [])
+      ]);
+      setAssignments(assignmentsData || []);
+      setExams(examsData || []);
     } catch (err) {
-      console.error('Failed to fetch subjects:', err);
+      console.error('Failed to fetch data:', err);
     }
   };
 
@@ -41,8 +49,8 @@ const GeneratePlan = () => {
     setError(null);
     setResult(null);
 
-    if (subjects.length === 0) {
-      setError('Please add at least one subject before generating a plan.');
+    if (assignments.length === 0 && exams.length === 0) {
+      setError('Please add at least one assignment or exam before generating a plan.');
       setLoading(false);
       return;
     }
@@ -50,7 +58,13 @@ const GeneratePlan = () => {
     try {
       const data = await generatePlan(formData);
       setResult(data);
+      console.log('Plan generated successfully:', data);
+      // Show success message and suggest viewing the plan
+      if (data && data.plan && data.plan.length > 0) {
+        console.log(`Generated plan has ${data.plan.length} days`);
+      }
     } catch (err) {
+      console.error('Error generating plan:', err);
       setError(err.response?.data?.detail || 'Failed to generate plan');
     } finally {
       setLoading(false);
@@ -107,16 +121,23 @@ const GeneratePlan = () => {
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={loading || subjects.length === 0}
+            disabled={loading || (assignments.length === 0 && exams.length === 0)}
           >
             {loading ? 'Generating...' : 'Generate Study Plan'}
           </button>
         </form>
       </div>
 
-      {subjects.length === 0 && (
+      {assignments.length === 0 && exams.length === 0 && (
         <div className="alert alert-info">
-          Please add subjects first before generating a plan.
+          Please add assignments or exams first before generating a plan.
+        </div>
+      )}
+
+      {(assignments.length > 0 || exams.length > 0) && (
+        <div className="alert alert-info">
+          <p>You have {assignments.length} assignment(s) and {exams.length} exam(s).</p>
+          <p>The scheduler will prioritize assignments before their due dates, then allocate time for exam preparation.</p>
         </div>
       )}
 
@@ -152,7 +173,16 @@ const GeneratePlan = () => {
           </div>
 
           <div className="alert alert-success">
-            Study plan generated successfully! Check the "View Plan" page to see your schedule.
+            <p>Study plan generated successfully!</p>
+            <p>Plans saved: Check the backend console for details.</p>
+            <p>Go to the "View Plan" page to see your schedule.</p>
+            <button 
+              className="btn btn-primary" 
+              onClick={() => navigate('/view-plan')}
+              style={{ marginTop: '10px' }}
+            >
+              View Plan Now
+            </button>
           </div>
         </div>
       )}

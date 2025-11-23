@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react';
 import { getSubjects } from '../api/subjects';
+import { getExams } from '../api/exams';
+import { getAssignments } from '../api/assignments';
 import { getWeeklyPlan } from '../api/plan';
 import ReminderBanner from '../components/ReminderBanner';
-import { formatDate, getDaysUntil } from '../utils/helpers';
+import { getDaysUntil } from '../utils/helpers';
 import './Dashboard.css';
 
 const Dashboard = () => {
   const [subjects, setSubjects] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [exams, setExams] = useState([]);
   const [plan, setPlan] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalSubjects: 0,
     upcomingExams: 0,
-    urgentSubjects: 0
+    upcomingAssignments: 0
   });
 
   useEffect(() => {
@@ -21,28 +25,33 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [subjectsData, planData] = await Promise.all([
+      const [subjectsData, examsData, assignmentsData, planData] = await Promise.all([
         getSubjects(),
-        getWeeklyPlan()
+        getExams().catch(() => []),
+        getAssignments().catch(() => []),
+        getWeeklyPlan().catch(() => [])
       ]);
       setSubjects(subjectsData);
-      setPlan(planData);
+      setExams(examsData || []);
+      setAssignments(assignmentsData || []);
+      setPlan(planData || []);
 
-      // Calculate stats
+      // Calculate stats based on exams and assignments
       const today = new Date();
-      const upcomingExams = subjectsData.filter(subj => {
-        const days = getDaysUntil(subj.exam_date);
+      const upcomingExams = (examsData || []).filter(exam => {
+        const days = getDaysUntil(exam.exam_date);
         return days >= 0 && days <= 7;
       }).length;
 
-      const urgentSubjects = subjectsData.filter(
-        subj => subj.priority === 'urgent'
-      ).length;
+      const upcomingAssignments = (assignmentsData || []).filter(assgn => {
+        const days = getDaysUntil(assgn.due_date);
+        return days >= 0 && days <= 7;
+      }).length;
 
       setStats({
         totalSubjects: subjectsData.length,
         upcomingExams,
-        urgentSubjects
+        upcomingAssignments
       });
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -71,8 +80,8 @@ const Dashboard = () => {
           <p>Upcoming Exams (7 days)</p>
         </div>
         <div className="stat-card">
-          <h3>{stats.urgentSubjects}</h3>
-          <p>Urgent Subjects</p>
+          <h3>{stats.upcomingAssignments}</h3>
+          <p>Upcoming Assignments (7 days)</p>
         </div>
       </div>
 
@@ -86,10 +95,9 @@ const Dashboard = () => {
               <tr>
                 <th>Subject</th>
                 <th>Difficulty</th>
-                <th>Exam Date</th>
-                <th>Days Left</th>
-                <th>Priority</th>
                 <th>Recommended Hours</th>
+                <th>Past Assignments</th>
+                <th>Questionnaire Results</th>
               </tr>
             </thead>
             <tbody>
@@ -101,14 +109,25 @@ const Dashboard = () => {
                       {subject.difficulty}
                     </span>
                   </td>
-                  <td>{formatDate(subject.exam_date)}</td>
-                  <td>{getDaysUntil(subject.exam_date)} days</td>
-                  <td>
-                    <span className={`badge badge-${subject.priority}`}>
-                      {subject.priority}
-                    </span>
-                  </td>
                   <td>{subject.recommended_hours}h</td>
+                  <td>
+                    {subject.past_assignments && subject.past_assignments.length > 0 ? (
+                      <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px' }}>
+                        {subject.past_assignments.slice(0, 2).map((item, idx) => (
+                          <li key={idx}>{item.name}: {item.result}</li>
+                        ))}
+                      </ul>
+                    ) : 'N/A'}
+                  </td>
+                  <td>
+                    {subject.questionnaire_results && subject.questionnaire_results.length > 0 ? (
+                      <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px' }}>
+                        {subject.questionnaire_results.slice(0, 2).map((item, idx) => (
+                          <li key={idx}>{item.name}: {item.result}</li>
+                        ))}
+                      </ul>
+                    ) : 'N/A'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -120,4 +139,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
