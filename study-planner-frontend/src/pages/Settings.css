@@ -1,0 +1,44 @@
+.settings h1 {
+  color: white;
+  margin-bottom: 24px;
+}
+
+.command-list {
+  margin-top: 20px;
+}
+
+.command-item {
+  display: flex;
+  gap: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.command-item code {
+  background: #667eea;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.command-item span {
+  color: #6c757d;
+}
+
+@media (max-width: 768px) {
+  .command-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .command-item code {
+    min-width: auto;
+    width: 100%;
+  }
+}
+

@@ -1,0 +1,23 @@
+.study-plan-table {
+  overflow-x: auto;
+}
+
+.study-plan-table h3 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.day-cell {
+  font-weight: 600;
+  background: #f8f9fa;
+  vertical-align: middle;
+}
+
+.no-plan {
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+

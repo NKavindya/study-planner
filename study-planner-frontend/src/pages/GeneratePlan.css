@@ -1,0 +1,21 @@
+.generate-plan h1 {
+  color: white;
+  margin-bottom: 24px;
+}
+
+.plan-stats {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.plan-stats p {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+.plan-stats strong {
+  color: #667eea;
+}
+
