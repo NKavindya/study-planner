@@ -16,9 +16,6 @@ def generate_plan(request: plan_schema.GeneratePlanRequest, db: Session = Depend
         if request.available_hours_per_day <= 0:
             raise HTTPException(status_code=400, detail="Available hours per day must be greater than 0")
         
-        if request.start_date >= request.end_date:
-            raise HTTPException(status_code=400, detail="End date must be after start date")
-        
         # Get all assignments and exams
         assignments = assignment_model.get_all_assignments(db)
         exams = exam_model.get_all_exams(db)
@@ -26,13 +23,52 @@ def generate_plan(request: plan_schema.GeneratePlanRequest, db: Session = Depend
         if not assignments and not exams:
             raise HTTPException(status_code=400, detail="No assignments or exams found. Please add assignments or exams first.")
         
+        # Auto-calculate start_date if not provided
+        from datetime import datetime, timedelta
+        start_date = request.start_date
+        if not start_date:
+            start_date = datetime.now().strftime("%Y-%m-%d")
+        
+        # Auto-calculate end_date from latest assignment due_date or exam exam_date
+        end_date = request.end_date
+        if not end_date:
+            latest_date = None
+            for assignment in assignments:
+                if assignment.due_date:
+                    try:
+                        due_date = datetime.strptime(assignment.due_date, "%Y-%m-%d")
+                        if latest_date is None or due_date > latest_date:
+                            latest_date = due_date
+                    except:
+                        pass
+            
+            for exam in exams:
+                if exam.exam_date:
+                    try:
+                        exam_date = datetime.strptime(exam.exam_date, "%Y-%m-%d")
+                        if latest_date is None or exam_date > latest_date:
+                            latest_date = exam_date
+                    except:
+                        pass
+            
+            if latest_date:
+                # Add 1 day buffer after the latest deadline
+                end_date = (latest_date + timedelta(days=1)).strftime("%Y-%m-%d")
+            else:
+                # Default to 7 days from start if no deadlines found
+                start_obj = datetime.strptime(start_date, "%Y-%m-%d")
+                end_date = (start_obj + timedelta(days=7)).strftime("%Y-%m-%d")
+        
+        if start_date >= end_date:
+            raise HTTPException(status_code=400, detail="End date must be after start date")
+        
         # Generate plan
         plan_result = generate_study_plan(
             assignments,
             exams,
             request.available_hours_per_day,
-            request.start_date,
-            request.end_date
+            start_date,
+            end_date
         )
         
         # Clear existing plans
@@ -84,6 +120,7 @@ def generate_plan(request: plan_schema.GeneratePlanRequest, db: Session = Depend
                             "item_type": slot["category"],
                             "item_name": slot.get("item_name", ""),
                             "day": day_name,  # Ensure day is set
+                            "date": date_str,  # Store date for calendar views
                             "time_slot": slot.get("time", ""),
                             "hours": slot.get("hours", 0),
                             "category": slot["category"]
@@ -150,19 +187,29 @@ def get_weekly_plan(db: Session = Depends(get_db)):
         for i, p in enumerate(plans[:3]):
             print(f"DEBUG: Plan {i}: day={p.day}, item_id={p.item_id}, item_type={p.item_type}, item_name={p.item_name}, time_slot={p.time_slot}")
         
-        # Group by day
-        weekly_plan = {}
+        # Group by date (preferred) or day (fallback)
+        date_groups = {}  # Key: date string (YYYY-MM-DD) or day name
         plans_with_day = 0
         plans_without_day = 0
+        
         for plan in plans:
             day = plan.day
+            date = getattr(plan, 'date', None) if hasattr(plan, 'date') else None
+            
             if not day or day.strip() == "":
                 plans_without_day += 1
                 print(f"DEBUG: Skipping plan with no day: id={plan.id}, item_id={plan.item_id}, item_type={plan.item_type}")
                 continue
             plans_with_day += 1
-            if day not in weekly_plan:
-                weekly_plan[day] = []
+            
+            # Use date as key if available, otherwise use day
+            key = date if date else day
+            if key not in date_groups:
+                date_groups[key] = {
+                    "day": day,
+                    "date": date,
+                    "time_slots": []
+                }
             
             # Get item name (use stored name or fetch from database)
             item_name = plan.item_name if plan.item_name else f"Item {plan.item_id}"
@@ -186,20 +233,36 @@ def get_weekly_plan(db: Session = Depends(get_db)):
                 "item_name": item_name,
                 "category": plan.category if plan.category else plan.item_type,
                 "subject_name": subject_name,
-                "hours": plan.hours
+                "hours": plan.hours,
+                "date": date  # Include date for calendar
             }
-            weekly_plan[day].append(slot_data)
-            print(f"DEBUG: Added slot to {day}: {slot_data}")
+            date_groups[key]["time_slots"].append(slot_data)
+            print(f"DEBUG: Added slot to {key}: {slot_data}")
         
-        # Convert to list format
+        # Convert to list format, sorted by date if available
         result = []
-        days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        for day in days_order:
-            if day in weekly_plan and weekly_plan[day]:
+        if any(dg.get("date") for dg in date_groups.values()):
+            # Sort by date
+            sorted_items = sorted(
+                date_groups.items(),
+                key=lambda x: x[1]["date"] if x[1]["date"] else "9999-99-99"
+            )
+            for key, group in sorted_items:
                 result.append({
-                    "day": day,
-                    "time_slots": weekly_plan[day]
+                    "day": group["day"],
+                    "date": group["date"],
+                    "time_slots": group["time_slots"]
                 })
+        else:
+            # Fallback to day-based ordering
+            days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            for day in days_order:
+                if day in date_groups:
+                    result.append({
+                        "day": day,
+                        "date": date_groups[day]["date"],
+                        "time_slots": date_groups[day]["time_slots"]
+                    })
         
         print(f"DEBUG: Plans with day: {plans_with_day}, Plans without day: {plans_without_day}")
         print(f"DEBUG: Returning {len(result)} days with plans, total slots: {sum(len(r['time_slots']) for r in result)}")

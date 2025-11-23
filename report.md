@@ -344,10 +344,10 @@ Commands are implemented as navigation actions and button clicks in the UI.
 - `item_type`: "assignment" or "exam"
 - `item_name`: Name of the assignment or exam
 - `day`: Day of week
+- `date`: Date in YYYY-MM-DD format (for calendar views)
 - `time_slot`: Time range (e.g., "09:00-10:00")
 - `hours`: Hours allocated
 - `category`: "assignment" or "exam"
-- `subject_name`: Subject name (retrieved from assignment/exam)
 - `created_at`: Timestamp
 
 ### Notifications Table
@@ -409,6 +409,102 @@ Commands are implemented as navigation actions and button clicks in the UI.
    - Study plans now include category column
    - Clear distinction between assignments and exams in schedule
 
+9. **Automatic Plan Duration Calculation**:
+   - Plans now automatically extend to the latest assignment due date or exam date
+   - No manual end date input required
+   - System calculates optimal plan duration based on all deadlines
+   - Adds 1-day buffer after the latest deadline for flexibility
+   - Falls back to 7 days from start date if no deadlines are found
+
+10. **Interactive Calendar View**:
+    - Google Calendar-like interface with three view modes:
+      - **Daily View**: Detailed view of a single day with all time slots
+      - **Weekly View**: 7-day grid showing study sessions for each day
+      - **Monthly View**: Full month calendar with session indicators
+    - Date-based navigation with previous/next controls
+    - "Today" button for quick navigation
+    - Visual indicators for current day
+    - Color-coded badges for assignments vs exams
+    - Responsive design for mobile and desktop
+    - Date information stored in database for accurate calendar rendering
+
+## Implementation Details - Latest Features
+
+### Automatic End Date Calculation
+
+The system now automatically determines the optimal end date for study plans by:
+
+1. **Scanning All Deadlines**: Iterates through all assignments and exams to find the latest deadline
+2. **Date Comparison**: Compares `due_date` from assignments and `exam_date` from exams
+3. **Buffer Addition**: Adds 1 day buffer after the latest deadline to allow for completion
+4. **Fallback Logic**: If no deadlines exist, defaults to 7 days from start date
+
+**Backend Implementation** (`app/routers/planner.py`):
+```python
+# Auto-calculate end_date from latest assignment due_date or exam exam_date
+if not end_date:
+    latest_date = None
+    for assignment in assignments:
+        if assignment.due_date:
+            due_date = datetime.strptime(assignment.due_date, "%Y-%m-%d")
+            if latest_date is None or due_date > latest_date:
+                latest_date = due_date
+    
+    for exam in exams:
+        if exam.exam_date:
+            exam_date = datetime.strptime(exam.exam_date, "%Y-%m-%d")
+            if latest_date is None or exam_date > latest_date:
+                latest_date = exam_date
+    
+    if latest_date:
+        end_date = (latest_date + timedelta(days=1)).strftime("%Y-%m-%d")
+```
+
+### Calendar Component Architecture
+
+The Calendar component (`src/components/Calendar.jsx`) provides a comprehensive view of study plans:
+
+**Key Features**:
+- **View Mode Toggle**: Switch between daily, weekly, and monthly views
+- **Date Navigation**: Previous/next buttons with intelligent date calculation
+- **Today Button**: Quick navigation to current date
+- **Date Organization**: Plans organized by actual dates (YYYY-MM-DD) for accurate calendar rendering
+- **Visual Indicators**: 
+  - Current day highlighting
+  - Session count indicators in monthly view
+  - Color-coded category badges
+  - Time slot display in daily/weekly views
+
+**Data Flow**:
+1. Backend stores `date` field in `StudyPlan` model (YYYY-MM-DD format)
+2. `get_weekly_plan` endpoint returns plans with date information
+3. Calendar component organizes plans by date
+4. View modes filter and display dates based on current view
+
+**Database Schema Update**:
+- Added `date` column to `study_plans` table
+- Migration function automatically adds column to existing databases
+- Date stored as VARCHAR in YYYY-MM-DD format
+
+**View Modes**:
+
+1. **Daily View**:
+   - Shows single day with all time slots
+   - Displays time, item name, category, subject, and hours
+   - Empty state message when no sessions scheduled
+
+2. **Weekly View**:
+   - 7-column grid (Monday-Sunday)
+   - Shows up to 3 sessions per day with "more" indicator
+   - Compact time slot cards with essential information
+   - Current week highlighting
+
+3. **Monthly View**:
+   - Full month grid with proper week alignment
+   - Day numbers with session count indicators
+   - Click to view details (future enhancement)
+   - Grayed out days from other months
+
 ## Future Enhancements
 
 1. **Advanced ML Models**: Implement more sophisticated models (Random Forest, Neural Networks)
@@ -423,6 +519,9 @@ Commands are implemented as navigation actions and button clicks in the UI.
 10. **Multi-language Support**: Internationalization
 11. **Assignment Templates**: Pre-defined assignment types with default estimated hours
 12. **Study Session Tracking**: Track actual time spent vs. estimated time
+13. **Calendar Event Details**: Click on monthly view dates to see detailed sessions
+14. **Drag-and-Drop Rescheduling**: Allow users to move sessions between dates
+15. **Recurring Sessions**: Support for repeating study sessions
 
 ## Conclusion
 

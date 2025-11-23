@@ -56,6 +56,7 @@ class StudyPlan(Base):
     item_type = Column(String)  # "assignment" or "exam"
     item_name = Column(String)
     day = Column(String)
+    date = Column(String)  # YYYY-MM-DD format for calendar views
     time_slot = Column(String)
     hours = Column(Float)
     category = Column(String)  # "assignment" or "exam"
@@ -190,6 +191,14 @@ def migrate_study_plans_table():
                     print("Added category column to study_plans table")
                 except Exception as e:
                     print(f"Error adding category column: {e}")
+            
+            # Add date column if it doesn't exist
+            if 'date' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN date VARCHAR"))
+                    print("Added date column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding date column: {e}")
     except Exception as e:
         print(f"Error during study_plans migration: {e}")
 

@@ -151,6 +151,17 @@ code {
   color: white;
 }
 
+/* Difficulty badges */
+.badge-easy {
+  background: #2ed573;
+  color: white;
+}
+
+.badge-hard {
+  background: #ff4757;
+  color: white;
+}
+
 .badge-assignment {
   background: #5f27cd;
   color: white;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getWeeklyPlan, clearPlan } from '../api/plan';
-import StudyPlanTable from '../components/StudyPlanTable';
+import Calendar from '../components/Calendar';
 import Loader from '../components/Loader';
 import './ViewPlan.css';
 
@@ -79,17 +79,17 @@ const ViewPlan = () => {
         </div>
       )}
 
-      <div className="card">
-        <StudyPlanTable plan={plan} />
+      <div className="card" style={{ padding: 0 }}>
+        <Calendar plan={plan} />
       </div>
 
       {/* Debug info - remove in production */}
-      {process.env.NODE_ENV === 'development' && plan.length > 0 && (
-        <div className="card" style={{ marginTop: '20px', fontSize: '12px', background: '#f8f9fa' }}>
-          <h4>Debug Info</h4>
-          <pre>{JSON.stringify(plan, null, 2)}</pre>
-        </div>
-      )}
+      {/*{process.env.NODE_ENV === 'development' && plan.length > 0 && (*/}
+      {/*  <div className="card" style={{ marginTop: '20px', fontSize: '12px', background: '#f8f9fa' }}>*/}
+      {/*    <h4>Debug Info</h4>*/}
+      {/*    <pre>{JSON.stringify(plan, null, 2)}</pre>*/}
+      {/*  </div>*/}
+      {/*)}*/}
 
       {plan.length > 0 && (
         <div className="card">

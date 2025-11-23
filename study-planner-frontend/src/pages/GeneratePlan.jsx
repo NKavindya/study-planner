@@ -11,8 +11,8 @@ const GeneratePlan = () => {
   const [exams, setExams] = useState([]);
   const [formData, setFormData] = useState({
     available_hours_per_day: 3,
-    start_date: new Date().toISOString().split('T')[0],
-    end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    start_date: new Date().toISOString().split('T')[0]
+    // end_date will be auto-calculated from latest assignment/exam deadline
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -102,17 +102,9 @@ const GeneratePlan = () => {
                 onChange={handleChange}
                 required
               />
-            </div>
-
-            <div className="input-group">
-              <label>End Date *</label>
-              <input
-                type="date"
-                name="end_date"
-                value={formData.end_date}
-                onChange={handleChange}
-                required
-              />
+              <small style={{ color: '#666', fontSize: '12px' }}>
+                End date will be automatically calculated from your latest assignment or exam deadline
+              </small>
             </div>
           </div>
 
@@ -137,7 +129,8 @@ const GeneratePlan = () => {
       {(assignments.length > 0 || exams.length > 0) && (
         <div className="alert alert-info">
           <p>You have {assignments.length} assignment(s) and {exams.length} exam(s).</p>
-          <p>The scheduler will prioritize assignments before their due dates, then allocate time for exam preparation.</p>
+          <p>The scheduler will automatically extend the plan until the latest assignment due date or exam date.</p>
+          <p>Assignments will be prioritized before their due dates, then time will be allocated for exam preparation.</p>
         </div>
       )}
 
