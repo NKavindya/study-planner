@@ -16,12 +16,17 @@ const ViewPlan = () => {
   const fetchPlan = async () => {
     try {
       setLoading(true);
-      const data = await getWeeklyPlan();
-      setPlan(data);
       setError(null);
+      const data = await getWeeklyPlan();
+      if (data && Array.isArray(data)) {
+        setPlan(data);
+      } else {
+        setPlan([]);
+      }
     } catch (err) {
-      setError('Failed to load study plan');
-      console.error(err);
+      console.error('Error fetching plan:', err);
+      setError(err.response?.data?.detail || 'Failed to load study plan. Please generate a plan first.');
+      setPlan([]);
     } finally {
       setLoading(false);
     }

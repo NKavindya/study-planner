@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.database import StudyPlan, Subject
+from app.models.database import StudyPlan
 
 def create_study_plan(db: Session, plan_data: dict):
     plan = StudyPlan(**plan_data)

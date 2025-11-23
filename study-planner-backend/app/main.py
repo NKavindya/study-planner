@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.models.database import init_db
-from app.routers import subjects, planner, ml
+from app.routers import subjects, planner, ml, assignments, exams, notifications
 
 app = FastAPI(title="Study Planner API", version="1.0.0")
 
@@ -23,6 +23,9 @@ def startup_event():
 app.include_router(subjects.router)
 app.include_router(planner.router)
 app.include_router(ml.router)
+app.include_router(assignments.router)
+app.include_router(exams.router)
+app.include_router(notifications.router)
 
 @app.get("/")
 def root():

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getSubjects, deleteSubject } from '../api/subjects';
 import SubjectForm from '../components/SubjectForm';
-import { formatDate, getDaysUntil } from '../utils/helpers';
 import './AddSubjects.css';
 
 const AddSubjects = () => {
@@ -71,13 +70,11 @@ const AddSubjects = () => {
           <table className="table">
             <thead>
               <tr>
-                <th>Subject</th>
+                <th>Subject Name</th>
                 <th>Difficulty</th>
-                <th>Exam Date</th>
-                <th>Days Left</th>
-                <th>Past Score</th>
-                <th>Priority</th>
                 <th>Recommended Hours</th>
+                <th>Past Assignments</th>
+                <th>Questionnaire Results</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -90,15 +87,25 @@ const AddSubjects = () => {
                       {subject.difficulty}
                     </span>
                   </td>
-                  <td>{formatDate(subject.exam_date)}</td>
-                  <td>{getDaysUntil(subject.exam_date)} days</td>
-                  <td>{subject.past_score}%</td>
-                  <td>
-                    <span className={`badge badge-${subject.priority}`}>
-                      {subject.priority}
-                    </span>
-                  </td>
                   <td>{subject.recommended_hours}h</td>
+                  <td>
+                    {subject.past_assignments && subject.past_assignments.length > 0 ? (
+                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                        {subject.past_assignments.map((item, idx) => (
+                          <li key={idx}>{item.name}: {item.result}</li>
+                        ))}
+                      </ul>
+                    ) : 'N/A'}
+                  </td>
+                  <td>
+                    {subject.questionnaire_results && subject.questionnaire_results.length > 0 ? (
+                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                        {subject.questionnaire_results.map((item, idx) => (
+                          <li key={idx}>{item.name}: {item.result}</li>
+                        ))}
+                      </ul>
+                    ) : 'N/A'}
+                  </td>
                   <td>
                     <button
                       className="btn btn-danger"
@@ -118,4 +125,3 @@ const AddSubjects = () => {
 };
 
 export default AddSubjects;
-

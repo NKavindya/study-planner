@@ -18,6 +18,8 @@ const StudyPlanTable = ({ plan }) => {
           <tr>
             <th>Day</th>
             <th>Time Slot</th>
+            <th>Item Name</th>
+            <th>Category</th>
             <th>Subject</th>
             <th>Hours</th>
           </tr>
@@ -32,7 +34,13 @@ const StudyPlanTable = ({ plan }) => {
                   </td>
                 )}
                 <td>{slot.time}</td>
-                <td>{slot.subject}</td>
+                <td>{slot.item_name || slot.subject || 'N/A'}</td>
+                <td>
+                  <span className={`badge badge-${slot.category || 'default'}`}>
+                    {slot.category || 'N/A'}
+                  </span>
+                </td>
+                <td>{slot.subject_name || 'N/A'}</td>
                 <td>{slot.hours}h</td>
               </tr>
             ))
