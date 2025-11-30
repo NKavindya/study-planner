@@ -15,6 +15,12 @@
   align-items: center;
 }
 
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .navbar-brand h2 {
   color: #667eea;
   font-size: 24px;

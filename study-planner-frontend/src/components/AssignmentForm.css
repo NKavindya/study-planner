@@ -1,0 +1,12 @@
+.assignment-form {
+  width: 100%;
+}
+
+.assignment-form small {
+  display: block;
+  margin-top: 4px;
+  color: #6c757d;
+  font-size: 12px;
+}
+
+

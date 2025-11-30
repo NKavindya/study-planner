@@ -151,6 +151,47 @@ code {
   color: white;
 }
 
+/* Difficulty badges */
+.badge-easy {
+  background: #2ed573;
+  color: white;
+}
+
+.badge-hard {
+  background: #ff4757;
+  color: white;
+}
+
+.badge-assignment {
+  background: #5f27cd;
+  color: white;
+}
+
+.badge-exam {
+  background: #00d2d3;
+  color: white;
+}
+
+.badge-pending {
+  background: #ffa502;
+  color: white;
+}
+
+.badge-in_progress {
+  background: #3742fa;
+  color: white;
+}
+
+.badge-completed {
+  background: #2ed573;
+  color: white;
+}
+
+.badge-default {
+  background: #6c757d;
+  color: white;
+}
+
 .alert {
   padding: 16px;
   border-radius: 8px;

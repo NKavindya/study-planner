@@ -16,12 +16,34 @@ class Subject(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     difficulty = Column(String)  # easy, medium, hard
-    exam_date = Column(String)
+    recommended_hours = Column(Float, default=0.0)
+    past_assignments = Column(Text, default="")  # JSON string or comma-separated
+    questionnaire_results = Column(Text, default="")  # JSON string or text
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Assignment(Base):
+    __tablename__ = "assignments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    subject_name = Column(String)
+    due_date = Column(String)  # YYYY-MM-DD
+    estimated_hours = Column(Float, default=0.0)
+    difficulty = Column(String, default="medium")  # easy, medium, hard
+    priority = Column(String, default="medium")  # low, medium, high, urgent
+    status = Column(String, default="pending")  # pending, in_progress, completed
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Exam(Base):
+    __tablename__ = "exams"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    subject_name = Column(String)
+    exam_date = Column(String)  # YYYY-MM-DD
+    difficulty = Column(String, default="medium")  # easy, medium, hard
     past_score = Column(Float, default=0.0)
     chapters = Column(Integer, default=0)
-    has_assignment = Column(Boolean, default=False)
-    has_exam = Column(Boolean, default=True)
-    last_week_hours = Column(Float, default=0.0)
     recommended_hours = Column(Float, default=0.0)
     priority = Column(String, default="medium")  # low, medium, high, urgent
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -30,10 +52,26 @@ class StudyPlan(Base):
     __tablename__ = "study_plans"
     
     id = Column(Integer, primary_key=True, index=True)
-    subject_id = Column(Integer)
+    item_id = Column(Integer)  # Can be assignment_id or exam_id
+    item_type = Column(String)  # "assignment" or "exam"
+    item_name = Column(String)
     day = Column(String)
+    date = Column(String)  # YYYY-MM-DD format for calendar views
     time_slot = Column(String)
     hours = Column(Float)
+    category = Column(String)  # "assignment" or "exam"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    type = Column(String)  # "clash", "reminder", "warning"
+    title = Column(String)
+    message = Column(Text)
+    item_type = Column(String)  # "assignment", "exam", or "both"
+    item_ids = Column(String)  # Comma-separated IDs
+    is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Reminder(Base):
@@ -48,6 +86,121 @@ class Reminder(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    # Migrate existing tables if needed
+    migrate_subjects_table()
+    migrate_study_plans_table()
+
+def migrate_subjects_table():
+    """Add new columns to subjects table if they don't exist"""
+    from sqlalchemy import inspect, text
+    
+    try:
+        inspector = inspect(engine)
+        
+        # Check if subjects table exists
+        if 'subjects' not in inspector.get_table_names():
+            return
+        
+        columns = [col['name'] for col in inspector.get_columns('subjects')]
+        
+        with engine.begin() as conn:
+            # Add past_assignments column if it doesn't exist
+            if 'past_assignments' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE subjects ADD COLUMN past_assignments TEXT DEFAULT ''"))
+                    print("Added past_assignments column to subjects table")
+                except Exception as e:
+                    print(f"Error adding past_assignments column: {e}")
+            
+            # Add questionnaire_results column if it doesn't exist
+            if 'questionnaire_results' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE subjects ADD COLUMN questionnaire_results TEXT DEFAULT ''"))
+                    print("Added questionnaire_results column to subjects table")
+                except Exception as e:
+                    print(f"Error adding questionnaire_results column: {e}")
+    except Exception as e:
+        print(f"Error during migration: {e}")
+
+def migrate_study_plans_table():
+    """Add new columns to study_plans table if they don't exist"""
+    from sqlalchemy import inspect, text
+    
+    try:
+        inspector = inspect(engine)
+        
+        # Check if study_plans table exists
+        if 'study_plans' not in inspector.get_table_names():
+            return
+        
+        columns = [col['name'] for col in inspector.get_columns('study_plans')]
+        
+        with engine.begin() as conn:
+            # Add item_id column if it doesn't exist
+            if 'item_id' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN item_id INTEGER"))
+                    print("Added item_id column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding item_id column: {e}")
+            
+            # Add item_type column if it doesn't exist
+            if 'item_type' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN item_type VARCHAR"))
+                    print("Added item_type column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding item_type column: {e}")
+            
+            # Add item_name column if it doesn't exist
+            if 'item_name' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN item_name VARCHAR"))
+                    print("Added item_name column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding item_name column: {e}")
+            
+            # Add day column if it doesn't exist
+            if 'day' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN day VARCHAR"))
+                    print("Added day column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding day column: {e}")
+            
+            # Add time_slot column if it doesn't exist
+            if 'time_slot' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN time_slot VARCHAR"))
+                    print("Added time_slot column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding time_slot column: {e}")
+            
+            # Add hours column if it doesn't exist
+            if 'hours' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN hours FLOAT"))
+                    print("Added hours column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding hours column: {e}")
+            
+            # Add category column if it doesn't exist
+            if 'category' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN category VARCHAR"))
+                    print("Added category column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding category column: {e}")
+            
+            # Add date column if it doesn't exist
+            if 'date' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE study_plans ADD COLUMN date VARCHAR"))
+                    print("Added date column to study_plans table")
+                except Exception as e:
+                    print(f"Error adding date column: {e}")
+    except Exception as e:
+        print(f"Error during study_plans migration: {e}")
 
 def get_db():
     db = SessionLocal()

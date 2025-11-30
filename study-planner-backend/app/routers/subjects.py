@@ -4,48 +4,56 @@ from typing import List
 from app.models.database import get_db
 from app.models import subject as subject_model
 from app.schemas import subject_schema
-from app.services.ml_model import predict_hours
-from app.utils.date_utils import get_days_until_exam
-from app.utils.db_utils import subject_to_dict
+import json
 
 router = APIRouter(prefix="/api/subjects", tags=["subjects"])
 
 @router.post("/", response_model=subject_schema.SubjectResponse)
 def create_subject(subject: subject_schema.SubjectCreate, db: Session = Depends(get_db)):
     """Create a new subject"""
-    # Calculate recommended hours using ML model
-    days_left = get_days_until_exam(subject.exam_date)
-    difficulty_map = {"easy": 0, "medium": 1, "hard": 2}
-    difficulty_level = difficulty_map.get(subject.difficulty.lower(), 1)
-    
-    recommended_hours = predict_hours(
-        subject.past_score,
-        subject.difficulty,
-        subject.chapters,
-        days_left
-    )
-    
-    # Create subject with ML prediction
-    subject_data = subject.dict()
-    subject_data["recommended_hours"] = recommended_hours
-    
-    # Set initial priority
-    if days_left <= 3:
-        subject_data["priority"] = "urgent"
-    elif days_left <= 7:
-        subject_data["priority"] = "high"
-    elif days_left > 30:
-        subject_data["priority"] = "low"
-    else:
-        subject_data["priority"] = "medium"
-    
-    created_subject = subject_model.create_subject(db, subject_data)
-    return created_subject
+    try:
+        # Calculate recommended hours based on difficulty
+        difficulty_map = {"easy": 2.0, "medium": 4.0, "hard": 6.0}
+        recommended_hours = difficulty_map.get(subject.difficulty.lower(), 4.0)
+        
+        # Convert lists to JSON strings for storage
+        past_assignments_json = json.dumps([item.dict() for item in subject.past_assignments]) if subject.past_assignments else "[]"
+        questionnaire_results_json = json.dumps([item.dict() for item in subject.questionnaire_results]) if subject.questionnaire_results else "[]"
+        
+        # Create subject
+        subject_data = {
+            "name": subject.name,
+            "difficulty": subject.difficulty,
+            "recommended_hours": recommended_hours,
+            "past_assignments": past_assignments_json,
+            "questionnaire_results": questionnaire_results_json
+        }
+        
+        created_subject = subject_model.create_subject(db, subject_data)
+        
+        # Convert back to list format for response
+        created_subject.past_assignments = json.loads(created_subject.past_assignments) if created_subject.past_assignments else []
+        created_subject.questionnaire_results = json.loads(created_subject.questionnaire_results) if created_subject.questionnaire_results else []
+        
+        return created_subject
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating subject: {str(e)}")
 
 @router.get("/", response_model=List[subject_schema.SubjectResponse])
 def get_subjects(db: Session = Depends(get_db)):
     """Get all subjects"""
+    import json
     subjects = subject_model.get_all_subjects(db)
+    # Convert JSON strings back to lists
+    for subject in subjects:
+        try:
+            subject.past_assignments = json.loads(subject.past_assignments) if subject.past_assignments else []
+        except:
+            subject.past_assignments = []
+        try:
+            subject.questionnaire_results = json.loads(subject.questionnaire_results) if subject.questionnaire_results else []
+        except:
+            subject.questionnaire_results = []
     return subjects
 
 @router.get("/{subject_id}", response_model=subject_schema.SubjectResponse)
@@ -59,22 +67,36 @@ def get_subject(subject_id: int, db: Session = Depends(get_db)):
 @router.put("/{subject_id}", response_model=subject_schema.SubjectResponse)
 def update_subject(subject_id: int, subject: subject_schema.SubjectCreate, db: Session = Depends(get_db)):
     """Update a subject"""
-    # Recalculate recommended hours
-    days_left = get_days_until_exam(subject.exam_date)
-    recommended_hours = predict_hours(
-        subject.past_score,
-        subject.difficulty,
-        subject.chapters,
-        days_left
-    )
-    
-    subject_data = subject.dict()
-    subject_data["recommended_hours"] = recommended_hours
-    
-    updated_subject = subject_model.update_subject(db, subject_id, subject_data)
-    if not updated_subject:
-        raise HTTPException(status_code=404, detail="Subject not found")
-    return updated_subject
+    try:
+        # Recalculate recommended hours based on difficulty
+        difficulty_map = {"easy": 2.0, "medium": 4.0, "hard": 6.0}
+        recommended_hours = difficulty_map.get(subject.difficulty.lower(), 4.0)
+        
+        # Convert lists to JSON strings for storage
+        past_assignments_json = json.dumps([item.dict() for item in subject.past_assignments]) if subject.past_assignments else "[]"
+        questionnaire_results_json = json.dumps([item.dict() for item in subject.questionnaire_results]) if subject.questionnaire_results else "[]"
+        
+        subject_data = {
+            "name": subject.name,
+            "difficulty": subject.difficulty,
+            "recommended_hours": recommended_hours,
+            "past_assignments": past_assignments_json,
+            "questionnaire_results": questionnaire_results_json
+        }
+        
+        updated_subject = subject_model.update_subject(db, subject_id, subject_data)
+        if not updated_subject:
+            raise HTTPException(status_code=404, detail="Subject not found")
+        
+        # Convert back to list format for response
+        updated_subject.past_assignments = json.loads(updated_subject.past_assignments) if updated_subject.past_assignments else []
+        updated_subject.questionnaire_results = json.loads(updated_subject.questionnaire_results) if updated_subject.questionnaire_results else []
+        
+        return updated_subject
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating subject: {str(e)}")
 
 @router.delete("/{subject_id}")
 def delete_subject(subject_id: int, db: Session = Depends(get_db)):

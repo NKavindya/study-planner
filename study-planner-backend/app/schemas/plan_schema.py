@@ -20,8 +20,8 @@ class StudyPlanResponse(StudyPlanBase):
 
 class GeneratePlanRequest(BaseModel):
     available_hours_per_day: float
-    start_date: str
-    end_date: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None  # Optional - will be auto-calculated if not provided
 
 class WeeklyPlanResponse(BaseModel):
     day: str

@@ -18,25 +18,37 @@ const StudyPlanTable = ({ plan }) => {
           <tr>
             <th>Day</th>
             <th>Time Slot</th>
+            <th>Item Name</th>
+            <th>Category</th>
             <th>Subject</th>
             <th>Hours</th>
           </tr>
         </thead>
         <tbody>
-          {plan.map((dayPlan, idx) => (
-            dayPlan.time_slots.map((slot, slotIdx) => (
+          {plan.map((dayPlan, idx) => {
+            const timeSlots = dayPlan.time_slots || [];
+            if (timeSlots.length === 0) {
+              return null;
+            }
+            return timeSlots.map((slot, slotIdx) => (
               <tr key={`${idx}-${slotIdx}`}>
                 {slotIdx === 0 && (
-                  <td rowSpan={dayPlan.time_slots.length} className="day-cell">
+                  <td rowSpan={timeSlots.length} className="day-cell">
                     {dayPlan.day}
                   </td>
                 )}
-                <td>{slot.time}</td>
-                <td>{slot.subject}</td>
-                <td>{slot.hours}h</td>
+                <td>{slot.time || 'N/A'}</td>
+                <td>{slot.item_name || slot.subject || 'N/A'}</td>
+                <td>
+                  <span className={`badge badge-${slot.category || 'default'}`}>
+                    {slot.category || 'N/A'}
+                  </span>
+                </td>
+                <td>{slot.subject_name || 'N/A'}</td>
+                <td>{slot.hours || 0}h</td>
               </tr>
-            ))
-          ))}
+            ));
+          })}
         </tbody>
       </table>
     </div>

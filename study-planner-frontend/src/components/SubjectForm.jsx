@@ -6,22 +6,64 @@ const SubjectForm = ({ onSuccess, initialData = null }) => {
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     difficulty: initialData?.difficulty || 'medium',
-    exam_date: initialData?.exam_date || '',
-    past_score: initialData?.past_score || 0,
-    chapters: initialData?.chapters || 0,
-    has_assignment: initialData?.has_assignment || false,
-    has_exam: initialData?.has_exam || true,
-    last_week_hours: initialData?.last_week_hours || 0
+    past_assignments: initialData?.past_assignments || [],
+    questionnaire_results: initialData?.questionnaire_results || []
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: value
+    }));
+  };
+
+  const handleAddAssignment = () => {
+    setFormData(prev => ({
+      ...prev,
+      past_assignments: [...prev.past_assignments, { name: '', result: '' }]
+    }));
+  };
+
+  const handleRemoveAssignment = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      past_assignments: prev.past_assignments.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAssignmentChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      past_assignments: prev.past_assignments.map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const handleAddQuestionnaire = () => {
+    setFormData(prev => ({
+      ...prev,
+      questionnaire_results: [...prev.questionnaire_results, { name: '', result: '' }]
+    }));
+  };
+
+  const handleRemoveQuestionnaire = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      questionnaire_results: prev.questionnaire_results.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleQuestionnaireChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      questionnaire_results: prev.questionnaire_results.map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
     }));
   };
 
@@ -37,15 +79,12 @@ const SubjectForm = ({ onSuccess, initialData = null }) => {
       setFormData({
         name: '',
         difficulty: 'medium',
-        exam_date: '',
-        past_score: 0,
-        chapters: 0,
-        has_assignment: false,
-        has_exam: true,
-        last_week_hours: 0
+        past_assignments: [],
+        questionnaire_results: []
       });
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create subject');
+      console.error('Error:', err);
     } finally {
       setLoading(false);
     }
@@ -82,80 +121,80 @@ const SubjectForm = ({ onSuccess, initialData = null }) => {
           </div>
         </div>
 
-        <div className="form-row">
-          <div className="input-group">
-            <label>Exam Date *</label>
-            <input
-              type="date"
-              name="exam_date"
-              value={formData.exam_date}
-              onChange={handleChange}
-              required
-            />
+        <div className="form-section">
+          <div className="section-header">
+            <h3>Past Assignments</h3>
+            <button type="button" className="btn btn-secondary" onClick={handleAddAssignment}>
+              + Add Assignment
+            </button>
           </div>
-
-          <div className="input-group">
-            <label>Past Score (0-100)</label>
-            <input
-              type="number"
-              name="past_score"
-              value={formData.past_score}
-              onChange={handleChange}
-              min="0"
-              max="100"
-            />
-          </div>
+          {formData.past_assignments.map((assignment, index) => (
+            <div key={index} className="form-row assignment-row">
+              <div className="input-group">
+                <label>Assignment Name</label>
+                <input
+                  type="text"
+                  value={assignment.name}
+                  onChange={(e) => handleAssignmentChange(index, 'name', e.target.value)}
+                  placeholder="e.g., Assignment 1"
+                />
+              </div>
+              <div className="input-group">
+                <label>Result</label>
+                <input
+                  type="text"
+                  value={assignment.result}
+                  onChange={(e) => handleAssignmentChange(index, 'result', e.target.value)}
+                  placeholder="e.g., 85%"
+                />
+              </div>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => handleRemoveAssignment(index)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
         </div>
 
-        <div className="form-row">
-          <div className="input-group">
-            <label>Number of Chapters</label>
-            <input
-              type="number"
-              name="chapters"
-              value={formData.chapters}
-              onChange={handleChange}
-              min="0"
-            />
+        <div className="form-section">
+          <div className="section-header">
+            <h3>Questionnaire Results</h3>
+            <button type="button" className="btn btn-secondary" onClick={handleAddQuestionnaire}>
+              + Add Result
+            </button>
           </div>
-
-          <div className="input-group">
-            <label>Hours Studied Last Week</label>
-            <input
-              type="number"
-              name="last_week_hours"
-              value={formData.last_week_hours}
-              onChange={handleChange}
-              min="0"
-              step="0.5"
-            />
-          </div>
-        </div>
-
-        <div className="form-row">
-          <div className="input-group checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                name="has_assignment"
-                checked={formData.has_assignment}
-                onChange={handleChange}
-              />
-              Has Assignment
-            </label>
-          </div>
-
-          <div className="input-group checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                name="has_exam"
-                checked={formData.has_exam}
-                onChange={handleChange}
-              />
-              Has Exam
-            </label>
-          </div>
+          {formData.questionnaire_results.map((questionnaire, index) => (
+            <div key={index} className="form-row questionnaire-row">
+              <div className="input-group">
+                <label>Name (e.g., Mid Exam, Quiz)</label>
+                <input
+                  type="text"
+                  value={questionnaire.name}
+                  onChange={(e) => handleQuestionnaireChange(index, 'name', e.target.value)}
+                  placeholder="e.g., Mid Exam"
+                />
+              </div>
+              <div className="input-group">
+                <label>Result</label>
+                <input
+                  type="text"
+                  value={questionnaire.result}
+                  onChange={(e) => handleQuestionnaireChange(index, 'result', e.target.value)}
+                  placeholder="e.g., 78%"
+                />
+              </div>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => handleRemoveQuestionnaire(index)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
         </div>
 
         {error && <div className="alert alert-warning">{error}</div>}
@@ -169,4 +208,3 @@ const SubjectForm = ({ onSuccess, initialData = null }) => {
 };
 
 export default SubjectForm;
-
