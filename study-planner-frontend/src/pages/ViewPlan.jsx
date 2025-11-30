@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getWeeklyPlan, clearPlan } from '../api/plan';
 import Calendar from '../components/Calendar';
 import Loader from '../components/Loader';
 import './ViewPlan.css';
 
 const ViewPlan = () => {
+  const navigate = useNavigate();
   const [plan, setPlan] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,9 +65,18 @@ const ViewPlan = () => {
             Refresh
           </button>
           {plan.length > 0 && (
-            <button className="btn btn-danger" onClick={handleClear}>
-              Clear Plan
-            </button>
+            <>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => navigate('/generate-plan')}
+                style={{ marginRight: '8px' }}
+              >
+                🔄 Reschedule Plan
+              </button>
+              <button className="btn btn-danger" onClick={handleClear}>
+                Clear Plan
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -94,9 +105,17 @@ const ViewPlan = () => {
       {plan.length > 0 && (
         <div className="card">
           <h3>Plan Summary</h3>
-          <p>Your study plan has been generated and optimized using AI rules and ML predictions.</p>
-          <p>The scheduler prioritizes assignments before their due dates, then allocates time for exam preparation.</p>
-          <p>You can regenerate a new plan anytime from the "Generate Plan" page.</p>
+          <p>Your study plan has been generated and optimized using:</p>
+          <ul>
+            <li><strong>AI Rule-Based Logic:</strong> Automatically detects clashes and rearranges study slots</li>
+            <li><strong>ML Predictions:</strong> Predicts optimal study time based on past performance</li>
+            <li><strong>Intelligent Scheduling:</strong> Prioritizes assignments before due dates, then allocates time for exam preparation</li>
+          </ul>
+          <div className="alert alert-info" style={{ marginTop: '15px' }}>
+            <strong>💡 Flexible Rescheduling:</strong> You can easily reschedule your plan at any time. 
+            Simply click the "Reschedule Plan" button above to generate a new optimized schedule with updated parameters.
+            The system will automatically detect clashes and rearrange study slots as needed.
+          </div>
         </div>
       )}
     </div>

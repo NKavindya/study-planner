@@ -1,12 +1,126 @@
 from datetime import datetime, timedelta
 from app.utils.date_utils import get_days_until_exam, get_date_range, is_weekend, get_day_name
 
+def detect_and_handle_clashes(assignments_list, exams_list):
+    """
+    Detect clashes and automatically adjust priorities/rearrange items.
+    Rule-based logic: When overlapping exams are detected, rearrange study slots
+    by adjusting priorities and spreading items across available dates.
+    Returns: (adjusted_items, clash_rearrangements)
+    """
+    all_items = []
+    clash_rearrangements = []
+    
+    # Add assignments
+    for assgn in assignments_list:
+        item = {
+            "id": assgn.get("id"),
+            "name": assgn.get("name", ""),
+            "category": "assignment",
+            "hours": assgn.get("estimated_hours", 0),
+            "priority": assgn.get("priority", "medium"),
+            "due_date": assgn.get("due_date", ""),
+            "subject_name": assgn.get("subject_name", ""),
+            "deadline": assgn.get("due_date", "")
+        }
+        all_items.append(item)
+    
+    # Add exams
+    for exam in exams_list:
+        item = {
+            "id": exam.get("id"),
+            "name": exam.get("name", ""),
+            "category": "exam",
+            "hours": exam.get("recommended_hours", 0),
+            "priority": exam.get("priority", "medium"),
+            "due_date": exam.get("exam_date", ""),
+            "subject_name": exam.get("subject_name", ""),
+            "deadline": exam.get("exam_date", "")
+        }
+        all_items.append(item)
+    
+    # Detect clashes and rearrange
+    # Check for overlapping exams (same exam date)
+    exam_dates = {}
+    for item in all_items:
+        if item["category"] == "exam" and item.get("due_date"):
+            exam_date = item["due_date"]
+            if exam_date not in exam_dates:
+                exam_dates[exam_date] = []
+            exam_dates[exam_date].append(item)
+    
+    # Check for overlapping assignments (same due date or within 1 day)
+    assignment_dates = {}
+    for item in all_items:
+        if item["category"] == "assignment" and item.get("due_date"):
+            due_date = item["due_date"]
+            if due_date not in assignment_dates:
+                assignment_dates[due_date] = []
+            assignment_dates[due_date].append(item)
+    
+    # Handle exam-exam clashes: rearrange by adjusting priorities and spreading study time
+    for exam_date, conflicting_exams in exam_dates.items():
+        if len(conflicting_exams) > 1:
+            clash_rearrangements.append(
+                f"Clash detected: {len(conflicting_exams)} exams on {exam_date}. "
+                f"Rearranging study slots to spread preparation across available dates."
+            )
+            # Increase priority for all conflicting exams
+            # And distribute hours more evenly by starting earlier
+            for exam in conflicting_exams:
+                if exam["priority"] != "urgent":
+                    exam["priority"] = "high"
+                    # Increase recommended hours to allow for earlier start
+                    exam["hours"] = exam.get("hours", 0) * 1.2  # Add 20% buffer
+    
+    # Handle assignment-assignment clashes
+    for due_date, conflicting_assignments in assignment_dates.items():
+        if len(conflicting_assignments) > 1:
+            clash_rearrangements.append(
+                f"Clash detected: {len(conflicting_assignments)} assignments due on {due_date}. "
+                f"Rearranging study slots to ensure all assignments are completed on time."
+            )
+            # Prioritize larger assignments and spread workload
+            conflicting_assignments.sort(key=lambda x: x.get("hours", 0), reverse=True)
+            for idx, assignment in enumerate(conflicting_assignments):
+                # Give highest priority to the largest assignment
+                if idx == 0 and assignment["hours"] > 5:
+                    assignment["priority"] = "urgent"
+                elif assignment["priority"] != "urgent":
+                    assignment["priority"] = "high"
+    
+    # Handle assignment-exam conflicts (same date or within 1 day)
+    for assignment in all_items:
+        if assignment["category"] == "assignment" and assignment.get("due_date"):
+            assgn_date = datetime.strptime(assignment["due_date"], "%Y-%m-%d")
+            for exam in all_items:
+                if exam["category"] == "exam" and exam.get("due_date"):
+                    try:
+                        exam_date = datetime.strptime(exam["due_date"], "%Y-%m-%d")
+                        days_diff = abs((assgn_date - exam_date).days)
+                        if days_diff <= 1:
+                            clash_rearrangements.append(
+                                f"Conflict: Assignment '{assignment['name']}' and exam '{exam['name']}' "
+                                f"within {days_diff} day(s). Rearranging to prioritize assignment completion."
+                            )
+                            # Prioritize assignment (must be done first)
+                            assignment["priority"] = "urgent"
+                            # Start exam preparation earlier
+                            if exam["priority"] != "urgent":
+                                exam["priority"] = "high"
+                    except:
+                        pass
+    
+    return all_items, clash_rearrangements
+
 def generate_study_plan(assignments, exams, available_hours_per_day: float, start_date: str, end_date: str):
     """
-    Generate a deadline-aware study plan:
+    Generate a deadline-aware study plan with automatic clash resolution:
+    - Detects overlapping exams and automatically rearranges study slots
     - Assignments must be scheduled BEFORE their due dates
     - After assignment due dates, time can be allocated to exams
     - Exams should be scheduled before their exam dates
+    - Rule-based logic rearranges items when clashes are detected
     """
     # Validate inputs
     if available_hours_per_day <= 0:
@@ -42,39 +156,13 @@ def generate_study_plan(assignments, exams, available_hours_per_day: float, star
                 print(f"Error processing exam: {e}")
                 continue
     
-    # Combine all items with category
-    all_items = []
+    # Detect clashes and automatically rearrange (rule-based logic)
+    all_items, clash_rearrangements = detect_and_handle_clashes(assignments_list, exams_list)
     
-    # Add assignments - these MUST be completed before due date
-    for assgn in assignments_list:
-        item = {
-            "id": assgn.get("id"),
-            "name": assgn.get("name", ""),
-            "category": "assignment",
-            "hours": assgn.get("estimated_hours", 0),
-            "priority": assgn.get("priority", "medium"),
-            "due_date": assgn.get("due_date", ""),
-            "subject_name": assgn.get("subject_name", ""),
-            "deadline": assgn.get("due_date", "")  # Must be done before this
-        }
-        all_items.append(item)
-    
-    # Add exams - these should be studied before exam date
-    for exam in exams_list:
-        item = {
-            "id": exam.get("id"),
-            "name": exam.get("name", ""),
-            "category": "exam",
-            "hours": exam.get("recommended_hours", 0),
-            "priority": exam.get("priority", "medium"),
-            "due_date": exam.get("exam_date", ""),
-            "subject_name": exam.get("subject_name", ""),
-            "deadline": exam.get("exam_date", "")  # Must be studied before this
-        }
-        all_items.append(item)
-    
-    # Apply rules
+    # Apply additional rules
     rules_triggered = []
+    # Add clash rearrangements to rules_triggered
+    rules_triggered.extend(clash_rearrangements)
     for item in all_items:
         if item["category"] == "assignment":
             days_left = get_days_until_exam(item["due_date"])

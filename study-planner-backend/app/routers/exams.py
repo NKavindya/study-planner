@@ -6,6 +6,7 @@ from app.models import exam as exam_model
 from app.schemas import exam_schema
 from app.services.ml_model import predict_hours
 from app.services.clash_detector import detect_all_clashes
+from app.services.reminder_service import generate_automatic_reminders
 from app.utils.date_utils import get_days_until_exam
 
 router = APIRouter(prefix="/api/exams", tags=["exams"])
@@ -38,8 +39,9 @@ def create_exam(exam: exam_schema.ExamCreate, db: Session = Depends(get_db)):
     
     created_exam = exam_model.create_exam(db, exam_data)
     
-    # Detect clashes after creating
+    # Detect clashes and generate reminders after creating
     detect_all_clashes(db)
+    generate_automatic_reminders(db)
     
     return created_exam
 

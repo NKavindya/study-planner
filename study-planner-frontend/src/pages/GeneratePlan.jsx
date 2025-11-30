@@ -128,9 +128,15 @@ const GeneratePlan = () => {
 
       {(assignments.length > 0 || exams.length > 0) && (
         <div className="alert alert-info">
-          <p>You have {assignments.length} assignment(s) and {exams.length} exam(s).</p>
-          <p>The scheduler will automatically extend the plan until the latest assignment due date or exam date.</p>
-          <p>Assignments will be prioritized before their due dates, then time will be allocated for exam preparation.</p>
+          <p><strong>📚 Your Study Items:</strong> {assignments.length} assignment(s) and {exams.length} exam(s)</p>
+          <p><strong>🔀 Intelligent Scheduling Features:</strong></p>
+          <ul>
+            <li>Automatically detects clashes (overlapping exams/deadlines) and rearranges study slots</li>
+            <li>Uses ML predictions to allocate study time based on past performance</li>
+            <li>Prioritizes assignments before their due dates, then allocates time for exam preparation</li>
+            <li>Automatically extends the plan until the latest assignment due date or exam date</li>
+          </ul>
+          <p><strong>💡 Flexible Rescheduling:</strong> You can easily regenerate your plan anytime with different parameters.</p>
         </div>
       )}
 
@@ -138,13 +144,28 @@ const GeneratePlan = () => {
         <div className="card">
           <h2>Plan Generation Results</h2>
           
-          {result.clashes && result.clashes.length > 0 && (
+          {result.clash_rearrangements && result.clash_rearrangements.length > 0 && (
             <div className="alert alert-warning">
-              <strong>Clashes Detected:</strong>
+              <strong>🔀 Automatic Clash Rearrangement:</strong>
+              <p>The system detected overlaps and automatically rearranged study slots:</p>
               <ul>
-                {result.clashes.map((clash, idx) => (
+                {result.clash_rearrangements.map((clash, idx) => (
                   <li key={idx}>{clash}</li>
                 ))}
+              </ul>
+            </div>
+          )}
+
+          {result.reminders_created && result.reminders_created.length > 0 && (
+            <div className="alert alert-info">
+              <strong>🔔 Automatic Reminders Created:</strong>
+              <ul>
+                {result.reminders_created.slice(0, 5).map((reminder, idx) => (
+                  <li key={idx}>{reminder}</li>
+                ))}
+                {result.reminders_created.length > 5 && (
+                  <li>...and {result.reminders_created.length - 5} more reminders</li>
+                )}
               </ul>
             </div>
           )}
@@ -153,7 +174,7 @@ const GeneratePlan = () => {
             <div className="alert alert-info">
               <strong>Rules Applied:</strong>
               <ul>
-                {result.rules_triggered.slice(0, 10).map((rule, idx) => (
+                {result.rules_triggered.filter(r => !r.includes("Clash detected") && !r.includes("Conflict")).slice(0, 10).map((rule, idx) => (
                   <li key={idx}>{rule}</li>
                 ))}
               </ul>

@@ -5,6 +5,7 @@ from app.models.database import get_db
 from app.models import assignment as assignment_model
 from app.schemas import assignment_schema
 from app.services.clash_detector import detect_all_clashes
+from app.services.reminder_service import generate_automatic_reminders
 from app.utils.date_utils import get_days_until_exam
 
 router = APIRouter(prefix="/api/assignments", tags=["assignments"])
@@ -28,8 +29,9 @@ def create_assignment(assignment: assignment_schema.AssignmentCreate, db: Sessio
     
     created_assignment = assignment_model.create_assignment(db, assignment_data)
     
-    # Detect clashes after creating
+    # Detect clashes and generate reminders after creating
     detect_all_clashes(db)
+    generate_automatic_reminders(db)
     
     return created_assignment
 

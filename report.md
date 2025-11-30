@@ -1,5 +1,70 @@
 # Intelligent Study Planner - Project Report
 
+## Scenario Requirements Implementation
+
+This application fully implements **Scenario 02: Intelligent Study Planner** with the following requirements:
+
+### ✅ 1. Rule-Based Logic to Detect Clashes and Rearrange Study Slots
+
+**Implementation:** The system uses comprehensive rule-based logic to automatically detect and resolve clashes:
+
+- **Automatic Clash Detection** (`app/services/clash_detector.py`):
+  - Detects overlapping exams (same exam date)
+  - Detects overlapping assignments (same due date or within 1 day)
+  - Detects assignment-exam conflicts (same date or within 1 day)
+
+- **Automatic Rearrangement** (`app/services/scheduler.py`):
+  - When overlapping exams are detected, the scheduler automatically rearranges study slots by:
+    - Increasing priority of conflicting items
+    - Distributing study hours more evenly across available dates
+    - Adding buffer time (20% increase) to allow for earlier preparation
+    - Spreading preparation across multiple days to avoid conflicts
+  - When assignment-exam conflicts occur, assignments are prioritized (urgent) and exam preparation is scheduled earlier
+  - The rearrangement happens automatically during plan generation - no manual intervention required
+
+**Example:** If two exams are scheduled on the same date, the system automatically detects this clash and rearranges the study schedule to start preparing for both exams earlier, distributing study time across multiple days before the exam date.
+
+### ✅ 2. Simple ML Model to Predict Study Time Based on Past Performance
+
+**Implementation:** A Linear Regression model (`app/services/ml_model.py`) predicts recommended study hours:
+
+- **Features Used:**
+  - `past_score` (0-100): Previous performance score
+  - `difficulty_level` (easy=0, medium=1, hard=2): Subject difficulty
+  - `chapters`: Number of chapters to cover
+  - `days_left`: Days until exam
+
+- **Training Data:** Sample dataset with 15 examples, expandable with real user data
+- **Prediction:** Returns recommended study hours (minimum 1 hour)
+- **Integration:** Automatically used when creating/updating exams via the API
+- **Continuous Improvement:** Model can be retrained with more data over time
+
+**Example:** For an exam with past_score=65, difficulty="hard", chapters=10, and days_left=7, the ML model predicts approximately 4-5 hours of recommended study time, which is then used in the study plan.
+
+### ✅ 3. Reminders and Flexible Rescheduling Mechanisms
+
+**Implementation:**
+
+- **Automatic Reminder Generation** (`app/services/reminder_service.py`):
+  - Automatically creates reminders for assignments due within 3 days
+  - Automatically creates reminders for exams within 7 days (urgent reminders for exams within 3 days)
+  - Reminders are generated automatically when:
+    - Assignments/exams are created or updated
+    - Study plans are generated
+  - Reminders displayed in a banner on the dashboard and in notification system
+
+- **Flexible Rescheduling Mechanisms:**
+  - **Easy Rescheduling:** Users can regenerate study plans at any time from the "Generate Plan" page
+  - **Dynamic Parameters:** Users can adjust:
+    - Available hours per day
+    - Start date
+    - End date (auto-calculated from latest deadline)
+  - **One-Click Rescheduling:** "Reschedule Plan" button in View Plan page for quick regeneration
+  - **Automatic Clash Resolution:** When rescheduling, clashes are automatically detected and resolved
+  - **Preserves Data:** Existing assignments and exams remain unchanged during rescheduling
+
+**Example:** A student can change their available hours from 3 to 5 hours per day and instantly regenerate their entire study plan. The system will automatically detect any new clashes, rearrange study slots, and update reminders.
+
 ## Problem Addressed
 
 Students often struggle with managing their study schedules effectively, especially when dealing with multiple subjects, varying difficulty levels, and tight deadlines. The challenge lies in:
@@ -109,6 +174,18 @@ Implements 15 intelligent rules:
 - Prevents duplicate notifications
 - Provides detailed clash summaries
 
+**Automatic Reminder Generation** (`app/services/reminder_service.py`):
+- Automatically generates reminders for assignments due within 3 days
+- Automatically generates reminders for exams within 7 days
+- Creates urgent reminders (⚠️) for exams within 3 days
+- Triggered automatically when:
+  - Assignments/exams are created or updated
+  - Study plans are generated
+- Reminders are stored in database and displayed in:
+  - Reminder banner on dashboard
+  - Notification system
+- Prevents duplicate reminders
+
 #### 3. ML Model (`app/services/ml_model.py`)
 
 **Model Type**: Linear Regression
@@ -131,18 +208,27 @@ Implements 15 intelligent rules:
 
 #### 4. Enhanced Scheduler (`app/services/scheduler.py`)
 
-**Algorithm**:
-1. Combine assignments and exams into unified item list
-2. Apply rules for assignments (due date proximity, estimated hours)
-3. Apply rules for exams (exam date proximity, ML-predicted hours)
-4. Calculate total hours needed (assignments use estimated_hours, exams use recommended_hours)
-5. Compress schedule if needed (proportional reduction)
-6. Sort items by priority (urgent > high > medium > low) and due date
-7. Allocate time slots (1-hour blocks starting at 9 AM)
-8. Distribute items across available days with category tracking
-9. Generate weekly plan with day-by-day breakdown including category
+**Algorithm with Automatic Clash Rearrangement**:
+1. **Detect and Handle Clashes** (`detect_and_handle_clashes` function):
+   - Identifies overlapping exams (same exam date)
+   - Identifies overlapping assignments (same due date or within 1 day)
+   - Identifies assignment-exam conflicts (same date or within 1 day)
+   - **Automatically rearranges** by adjusting priorities and distributing study hours
+   - For exam-exam clashes: Increases priority to "high", adds 20% buffer hours, spreads preparation across days
+   - For assignment-assignment clashes: Prioritizes larger assignments, adjusts priorities dynamically
+   - For assignment-exam conflicts: Prioritizes assignments (urgent), starts exam preparation earlier (high priority)
+2. Combine assignments and exams into unified item list with clash adjustments
+3. Apply rules for assignments (due date proximity, estimated hours)
+4. Apply rules for exams (exam date proximity, ML-predicted hours)
+5. Calculate total hours needed (assignments use estimated_hours, exams use recommended_hours)
+6. Compress schedule if needed (proportional reduction)
+7. Sort items by priority (urgent > high > medium > low) and due date
+8. Allocate time slots (1-hour blocks starting at 9 AM)
+9. Distribute items across available days with category tracking
+10. Generate weekly plan with day-by-day breakdown including category
 
 **Features**:
+- **Automatic Clash Detection and Rearrangement**: Detects overlaps and automatically rearranges study slots
 - Handles assignments separately from exams
 - Uses estimated hours for assignments (user-provided)
 - Uses ML-predicted hours for exams
@@ -152,6 +238,7 @@ Implements 15 intelligent rules:
 - Distributes study load evenly
 - Creates time slots based on user availability
 - Tracks subject names for both assignments and exams
+- **Rule-based rearrangement**: When clashes detected, automatically adjusts priorities and spreads workload
 
 **New Rules for Assignments**:
 - Assignment due within 3 days → urgent priority

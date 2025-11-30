@@ -4,6 +4,8 @@ from app.models.database import get_db
 from app.models import assignment as assignment_model, exam as exam_model, plan as plan_model
 from app.schemas import plan_schema
 from app.services.scheduler import generate_study_plan
+from app.services.reminder_service import generate_automatic_reminders
+from app.services.clash_detector import detect_all_clashes
 from typing import List
 
 router = APIRouter(prefix="/api/planner", tags=["planner"])
@@ -151,12 +153,22 @@ def generate_plan(request: plan_schema.GeneratePlanRequest, db: Session = Depend
         
         print(f"DEBUG: Saved {plans_saved} plan slots to database")
         
+        # Detect clashes and generate automatic reminders after plan generation
+        detect_all_clashes(db)
+        reminders_created = generate_automatic_reminders(db)
+        
+        # Extract clash rearrangements from rules_triggered
+        clash_rearrangements = [r for r in plan_result["rules_triggered"] if "Clash detected" in r or "Conflict" in r]
+        other_rules = [r for r in plan_result["rules_triggered"] if "Clash detected" not in r and "Conflict" not in r]
+        
         return {
             "plan": plan_result["plan"],
             "rules_triggered": plan_result["rules_triggered"],
+            "clash_rearrangements": clash_rearrangements,
+            "reminders_created": reminders_created,
             "total_hours_needed": plan_result["total_hours_needed"],
             "total_available_hours": plan_result["total_available_hours"],
-            "message": "Study plan generated successfully"
+            "message": "Study plan generated successfully with automatic clash detection and reminders"
         }
     except HTTPException:
         # Re-raise HTTP exceptions (they already have proper status codes)
