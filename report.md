@@ -134,6 +134,396 @@ The application follows a **MERN-style architecture** with:
 - **Backend**: FastAPI (Python) for RESTful API
 - **Database**: SQLite for lightweight, file-based storage
 
+#### System Architecture Diagram
+
+The following diagram can be used on [PlantText.com](https://www.planttext.com/) to visualize the system architecture:
+
+```plantuml
+@startuml System Architecture
+!theme plain
+skinparam componentStyle rectangle
+
+package "Frontend (React + Vite)" {
+  [Dashboard Page] as Dashboard
+  [Subjects Page] as Subjects
+  [Assignments Page] as Assignments
+  [Exams Page] as Exams
+  [Generate Plan Page] as GeneratePlan
+  [View Plan Page] as ViewPlan
+  [Settings Page] as Settings
+  [Notification System] as Notifications
+  [Calendar Component] as Calendar
+}
+
+package "Backend (FastAPI)" {
+  [API Router] as API
+  [Subjects Router] as SubjectsAPI
+  [Assignments Router] as AssignmentsAPI
+  [Exams Router] as ExamsAPI
+  [Planner Router] as PlannerAPI
+  [Notifications Router] as NotificationsAPI
+  [ML Router] as MLAPI
+}
+
+package "Services Layer" {
+  [Rules Engine] as RulesEngine
+  [Clash Detector] as ClashDetector
+  [Scheduler] as Scheduler
+  [ML Model Service] as MLModel
+  [Reminder Service] as ReminderService
+}
+
+database "SQLite Database" {
+  [Subjects Table] as SubjectsDB
+  [Assignments Table] as AssignmentsDB
+  [Exams Table] as ExamsDB
+  [StudyPlans Table] as StudyPlansDB
+  [Notifications Table] as NotificationsDB
+  [Reminders Table] as RemindersDB
+}
+
+Dashboard --> API
+Subjects --> API
+Assignments --> API
+Exams --> API
+GeneratePlan --> API
+ViewPlan --> API
+Settings --> API
+Notifications --> API
+Calendar --> API
+
+API --> SubjectsAPI
+API --> AssignmentsAPI
+API --> ExamsAPI
+API --> PlannerAPI
+API --> NotificationsAPI
+API --> MLAPI
+
+SubjectsAPI --> SubjectsDB
+AssignmentsAPI --> AssignmentsDB
+ExamsAPI --> ExamsDB
+PlannerAPI --> StudyPlansDB
+NotificationsAPI --> NotificationsDB
+
+SubjectsAPI --> RulesEngine
+AssignmentsAPI --> ClashDetector
+AssignmentsAPI --> ReminderService
+ExamsAPI --> MLModel
+ExamsAPI --> ClashDetector
+ExamsAPI --> ReminderService
+PlannerAPI --> Scheduler
+PlannerAPI --> ClashDetector
+PlannerAPI --> ReminderService
+Scheduler --> RulesEngine
+Scheduler --> ClashDetector
+MLAPI --> MLModel
+
+@enduml
+```
+
+#### Study Plan Generation Flow Diagram
+
+This diagram illustrates how study plans are generated with automatic clash detection and rearrangement:
+
+```plantuml
+@startuml Study Plan Generation Flow
+!theme plain
+skinparam activity {
+  BackgroundColor lightblue
+  BorderColor black
+}
+
+start
+
+:User requests plan generation;
+:Get all assignments and exams;
+
+:Detect clashes;
+note right
+  - Exam-Exam overlaps
+  - Assignment-Assignment overlaps
+  - Assignment-Exam conflicts
+end note
+
+if (Clashes detected?) then (yes)
+  :Automatically rearrange;
+  note right
+    - Adjust priorities
+    - Add buffer hours
+    - Spread across days
+  end note
+else (no)
+endif
+
+:Apply rule-based logic;
+note right
+  - Difficulty rules
+  - Deadline rules
+  - Priority rules
+end note
+
+:Calculate ML predictions;
+note right
+  For exams: Use past_score,
+  difficulty, chapters, days_left
+end note
+
+:Calculate total hours needed;
+
+if (Hours > Available hours?) then (yes)
+  :Compress schedule;
+  note right: Proportional reduction
+else (no)
+endif
+
+:Sort by priority and deadline;
+
+:Allocate time slots;
+note right
+  - Assignments before due dates
+  - Exams before exam dates
+  - Distribute evenly
+end note
+
+:Generate automatic reminders;
+note right
+  - Assignments due in 3 days
+  - Exams in 7 days
+  - Urgent: Exams in 3 days
+end note
+
+:Save study plan to database;
+
+:Return plan to user;
+
+stop
+
+@enduml
+```
+
+#### Database Schema Diagram (ER Diagram)
+
+This diagram shows the database structure and relationships:
+
+```plantuml
+@startuml Database Schema
+!theme plain
+skinparam linetype ortho
+
+entity "Subjects" {
+  * id : INTEGER <<PK>>
+  --
+  * name : VARCHAR
+  * difficulty : VARCHAR
+  * recommended_hours : FLOAT
+  * past_assignments : TEXT
+  * questionnaire_results : TEXT
+  * created_at : DATETIME
+}
+
+entity "Assignments" {
+  * id : INTEGER <<PK>>
+  --
+  * name : VARCHAR
+  * subject_name : VARCHAR <<FK>>
+  * due_date : VARCHAR
+  * estimated_hours : FLOAT
+  * difficulty : VARCHAR
+  * priority : VARCHAR
+  * status : VARCHAR
+  * created_at : DATETIME
+}
+
+entity "Exams" {
+  * id : INTEGER <<PK>>
+  --
+  * name : VARCHAR
+  * subject_name : VARCHAR <<FK>>
+  * exam_date : VARCHAR
+  * difficulty : VARCHAR
+  * past_score : FLOAT
+  * chapters : INTEGER
+  * recommended_hours : FLOAT
+  * priority : VARCHAR
+  * created_at : DATETIME
+}
+
+entity "StudyPlans" {
+  * id : INTEGER <<PK>>
+  --
+  * item_id : INTEGER
+  * item_type : VARCHAR
+  * item_name : VARCHAR
+  * day : VARCHAR
+  * date : VARCHAR
+  * time_slot : VARCHAR
+  * hours : FLOAT
+  * category : VARCHAR
+  * created_at : DATETIME
+}
+
+entity "Notifications" {
+  * id : INTEGER <<PK>>
+  --
+  * type : VARCHAR
+  * title : VARCHAR
+  * message : TEXT
+  * item_type : VARCHAR
+  * item_ids : VARCHAR
+  * is_read : BOOLEAN
+  * created_at : DATETIME
+}
+
+entity "Reminders" {
+  * id : INTEGER <<PK>>
+  --
+  * subject_id : INTEGER <<FK>>
+  * message : TEXT
+  * reminder_date : VARCHAR
+  * is_read : BOOLEAN
+  * created_at : DATETIME
+}
+
+Subjects ||--o{ Assignments : "subject_name"
+Subjects ||--o{ Exams : "subject_name"
+Assignments ||--o{ StudyPlans : "item_id"
+Exams ||--o{ StudyPlans : "item_id"
+Subjects ||--o{ Reminders : "subject_id"
+
+note right of Assignments
+  Linked to Subjects via
+  subject_name (not FK constraint)
+end note
+
+note right of Exams
+  Linked to Subjects via
+  subject_name (not FK constraint)
+  ML-predicted recommended_hours
+end note
+
+note right of StudyPlans
+  item_type: "assignment" or "exam"
+  category: same as item_type
+end note
+
+@enduml
+```
+
+#### Clash Detection and Rearrangement Flow
+
+This diagram details the clash detection and automatic rearrangement process:
+
+```plantuml
+@startuml Clash Detection Flow
+!theme plain
+skinparam activity {
+  BackgroundColor lightyellow
+  BorderColor black
+}
+
+start
+
+:Receive assignments and exams;
+
+partition "Clash Detection" {
+  :Check Exam-Exam overlaps;
+  if (Same exam date?) then (yes)
+    :Mark as clash;
+    :Increase priority to "high";
+    :Add 20% buffer hours;
+    :Spread preparation across days;
+    note right: Automatic rearrangement
+  else (no)
+  endif
+  
+  :Check Assignment-Assignment overlaps;
+  if (Same/within 1 day due date?) then (yes)
+    :Mark as clash;
+    :Sort by size (largest first);
+    :Prioritize largest (urgent);
+    :Set others to high priority;
+    note right: Automatic rearrangement
+  else (no)
+  endif
+  
+  :Check Assignment-Exam conflicts;
+  if (Same/within 1 day date?) then (yes)
+    :Mark as conflict;
+    :Set assignment to urgent;
+    :Set exam to high priority;
+    :Start exam prep earlier;
+    note right: Automatic rearrangement
+  else (no)
+  endif
+}
+
+partition "Notification Generation" {
+  :Create clash notifications;
+  :Store in database;
+}
+
+partition "Rearrangement Results" {
+  :Return adjusted items;
+  :Return clash messages;
+}
+
+:Continue to scheduling;
+
+stop
+
+@enduml
+```
+
+#### ML Model Prediction Flow
+
+This diagram shows how the ML model predicts study hours:
+
+```plantuml
+@startuml ML Model Flow
+!theme plain
+skinparam componentStyle rectangle
+
+package "ML Model Service" {
+  [Load/Train Model] as TrainModel
+  [Linear Regression] as Model
+  [Predict Hours] as Predict
+}
+
+database "Training Data" {
+  [CSV File] as TrainingData
+}
+
+[User Creates Exam] as CreateExam
+
+CreateExam --> Predict : "Input: past_score,\ndifficulty, chapters,\ndays_left"
+
+Predict --> Model
+
+Model --> TrainingData : "Load training data"
+TrainingData --> Model : "Features: past_score,\ndifficulty_level,\nchapters, days_left"
+
+if (Model exists?) then (no)
+  TrainModel --> Model : "Train Linear Regression"
+end if
+
+Model --> Predict : "Predicted hours\n(minimum 1 hour)"
+
+Predict --> [Study Plan Generation] : "Use predicted hours\nfor scheduling"
+
+note right of Model
+  Features:
+  - past_score (0-100)
+  - difficulty_level (0,1,2)
+  - chapters (integer)
+  - days_left (integer)
+  
+  Output:
+  - recommended_hours (float)
+end note
+
+@enduml
+```
+
 ### Backend Implementation
 
 #### 1. Database Models (`app/models/database.py`)
@@ -633,4 +1023,398 @@ The implementation demonstrates:
 - User-centric design with real-time feedback
 
 The project provides a solid foundation for further enhancements and can be extended to support more advanced features and larger user bases. The recent updates significantly improve the system's ability to handle complex academic scheduling scenarios with multiple types of deadlines and commitments.
+
+## PlantUML Diagrams
+
+All diagrams in this report can be generated using [PlantText.com](https://www.planttext.com/). Below are the complete PlantUML codes for each diagram:
+
+### 1. System Architecture Diagram
+
+Copy this code to [PlantText.com](https://www.planttext.com/) to view the system architecture:
+
+```plantuml
+@startuml System Architecture
+!theme plain
+skinparam componentStyle rectangle
+
+package "Frontend (React + Vite)" {
+  [Dashboard Page] as Dashboard
+  [Subjects Page] as Subjects
+  [Assignments Page] as Assignments
+  [Exams Page] as Exams
+  [Generate Plan Page] as GeneratePlan
+  [View Plan Page] as ViewPlan
+  [Settings Page] as Settings
+  [Notification System] as Notifications
+  [Calendar Component] as Calendar
+}
+
+package "Backend (FastAPI)" {
+  [API Router] as API
+  [Subjects Router] as SubjectsAPI
+  [Assignments Router] as AssignmentsAPI
+  [Exams Router] as ExamsAPI
+  [Planner Router] as PlannerAPI
+  [Notifications Router] as NotificationsAPI
+  [ML Router] as MLAPI
+}
+
+package "Services Layer" {
+  [Rules Engine] as RulesEngine
+  [Clash Detector] as ClashDetector
+  [Scheduler] as Scheduler
+  [ML Model Service] as MLModel
+  [Reminder Service] as ReminderService
+}
+
+database "SQLite Database" {
+  [Subjects Table] as SubjectsDB
+  [Assignments Table] as AssignmentsDB
+  [Exams Table] as ExamsDB
+  [StudyPlans Table] as StudyPlansDB
+  [Notifications Table] as NotificationsDB
+  [Reminders Table] as RemindersDB
+}
+
+Dashboard --> API
+Subjects --> API
+Assignments --> API
+Exams --> API
+GeneratePlan --> API
+ViewPlan --> API
+Settings --> API
+Notifications --> API
+Calendar --> API
+
+API --> SubjectsAPI
+API --> AssignmentsAPI
+API --> ExamsAPI
+API --> PlannerAPI
+API --> NotificationsAPI
+API --> MLAPI
+
+SubjectsAPI --> SubjectsDB
+AssignmentsAPI --> AssignmentsDB
+ExamsAPI --> ExamsDB
+PlannerAPI --> StudyPlansDB
+NotificationsAPI --> NotificationsDB
+
+SubjectsAPI --> RulesEngine
+AssignmentsAPI --> ClashDetector
+AssignmentsAPI --> ReminderService
+ExamsAPI --> MLModel
+ExamsAPI --> ClashDetector
+ExamsAPI --> ReminderService
+PlannerAPI --> Scheduler
+PlannerAPI --> ClashDetector
+PlannerAPI --> ReminderService
+Scheduler --> RulesEngine
+Scheduler --> ClashDetector
+MLAPI --> MLModel
+
+@enduml
+```
+
+### 2. Study Plan Generation Flow Diagram
+
+```plantuml
+@startuml Study Plan Generation Flow
+!theme plain
+skinparam activity {
+  BackgroundColor lightblue
+  BorderColor black
+}
+
+start
+
+:User requests plan generation;
+:Get all assignments and exams;
+
+:Detect clashes;
+note right
+  - Exam-Exam overlaps
+  - Assignment-Assignment overlaps
+  - Assignment-Exam conflicts
+end note
+
+if (Clashes detected?) then (yes)
+  :Automatically rearrange;
+  note right
+    - Adjust priorities
+    - Add buffer hours
+    - Spread across days
+  end note
+else (no)
+endif
+
+:Apply rule-based logic;
+note right
+  - Difficulty rules
+  - Deadline rules
+  - Priority rules
+end note
+
+:Calculate ML predictions;
+note right
+  For exams: Use past_score,
+  difficulty, chapters, days_left
+end note
+
+:Calculate total hours needed;
+
+if (Hours > Available hours?) then (yes)
+  :Compress schedule;
+  note right: Proportional reduction
+else (no)
+endif
+
+:Sort by priority and deadline;
+
+:Allocate time slots;
+note right
+  - Assignments before due dates
+  - Exams before exam dates
+  - Distribute evenly
+end note
+
+:Generate automatic reminders;
+note right
+  - Assignments due in 3 days
+  - Exams in 7 days
+  - Urgent: Exams in 3 days
+end note
+
+:Save study plan to database;
+
+:Return plan to user;
+
+stop
+
+@enduml
+```
+
+### 3. Database Schema Diagram (ER Diagram)
+
+```plantuml
+@startuml Database Schema
+!theme plain
+skinparam linetype ortho
+
+entity "Subjects" {
+  * id : INTEGER <<PK>>
+  --
+  * name : VARCHAR
+  * difficulty : VARCHAR
+  * recommended_hours : FLOAT
+  * past_assignments : TEXT
+  * questionnaire_results : TEXT
+  * created_at : DATETIME
+}
+
+entity "Assignments" {
+  * id : INTEGER <<PK>>
+  --
+  * name : VARCHAR
+  * subject_name : VARCHAR <<FK>>
+  * due_date : VARCHAR
+  * estimated_hours : FLOAT
+  * difficulty : VARCHAR
+  * priority : VARCHAR
+  * status : VARCHAR
+  * created_at : DATETIME
+}
+
+entity "Exams" {
+  * id : INTEGER <<PK>>
+  --
+  * name : VARCHAR
+  * subject_name : VARCHAR <<FK>>
+  * exam_date : VARCHAR
+  * difficulty : VARCHAR
+  * past_score : FLOAT
+  * chapters : INTEGER
+  * recommended_hours : FLOAT
+  * priority : VARCHAR
+  * created_at : DATETIME
+}
+
+entity "StudyPlans" {
+  * id : INTEGER <<PK>>
+  --
+  * item_id : INTEGER
+  * item_type : VARCHAR
+  * item_name : VARCHAR
+  * day : VARCHAR
+  * date : VARCHAR
+  * time_slot : VARCHAR
+  * hours : FLOAT
+  * category : VARCHAR
+  * created_at : DATETIME
+}
+
+entity "Notifications" {
+  * id : INTEGER <<PK>>
+  --
+  * type : VARCHAR
+  * title : VARCHAR
+  * message : TEXT
+  * item_type : VARCHAR
+  * item_ids : VARCHAR
+  * is_read : BOOLEAN
+  * created_at : DATETIME
+}
+
+entity "Reminders" {
+  * id : INTEGER <<PK>>
+  --
+  * subject_id : INTEGER <<FK>>
+  * message : TEXT
+  * reminder_date : VARCHAR
+  * is_read : BOOLEAN
+  * created_at : DATETIME
+}
+
+Subjects ||--o{ Assignments : "subject_name"
+Subjects ||--o{ Exams : "subject_name"
+Assignments ||--o{ StudyPlans : "item_id"
+Exams ||--o{ StudyPlans : "item_id"
+Subjects ||--o{ Reminders : "subject_id"
+
+note right of Assignments
+  Linked to Subjects via
+  subject_name (not FK constraint)
+end note
+
+note right of Exams
+  Linked to Subjects via
+  subject_name (not FK constraint)
+  ML-predicted recommended_hours
+end note
+
+note right of StudyPlans
+  item_type: "assignment" or "exam"
+  category: same as item_type
+end note
+
+@enduml
+```
+
+### 4. Clash Detection and Rearrangement Flow
+
+```plantuml
+@startuml Clash Detection Flow
+!theme plain
+skinparam activity {
+  BackgroundColor lightyellow
+  BorderColor black
+}
+
+start
+
+:Receive assignments and exams;
+
+partition "Clash Detection" {
+  :Check Exam-Exam overlaps;
+  if (Same exam date?) then (yes)
+    :Mark as clash;
+    :Increase priority to "high";
+    :Add 20% buffer hours;
+    :Spread preparation across days;
+    note right: Automatic rearrangement
+  else (no)
+  endif
+  
+  :Check Assignment-Assignment overlaps;
+  if (Same/within 1 day due date?) then (yes)
+    :Mark as clash;
+    :Sort by size (largest first);
+    :Prioritize largest (urgent);
+    :Set others to high priority;
+    note right: Automatic rearrangement
+  else (no)
+  endif
+  
+  :Check Assignment-Exam conflicts;
+  if (Same/within 1 day date?) then (yes)
+    :Mark as conflict;
+    :Set assignment to urgent;
+    :Set exam to high priority;
+    :Start exam prep earlier;
+    note right: Automatic rearrangement
+  else (no)
+  endif
+}
+
+partition "Notification Generation" {
+  :Create clash notifications;
+  :Store in database;
+}
+
+partition "Rearrangement Results" {
+  :Return adjusted items;
+  :Return clash messages;
+}
+
+:Continue to scheduling;
+
+stop
+
+@enduml
+```
+
+### 5. ML Model Prediction Flow
+
+```plantuml
+@startuml ML Model Flow
+!theme plain
+skinparam componentStyle rectangle
+
+package "ML Model Service" {
+  [Load/Train Model] as TrainModel
+  [Linear Regression] as Model
+  [Predict Hours] as Predict
+}
+
+database "Training Data" {
+  [CSV File] as TrainingData
+}
+
+[User Creates Exam] as CreateExam
+
+CreateExam --> Predict : "Input: past_score,\ndifficulty, chapters,\ndays_left"
+
+Predict --> Model
+
+Model --> TrainingData : "Load training data"
+TrainingData --> Model : "Features: past_score,\ndifficulty_level,\nchapters, days_left"
+
+if (Model exists?) then (no)
+  TrainModel --> Model : "Train Linear Regression"
+end if
+
+Model --> Predict : "Predicted hours\n(minimum 1 hour)"
+
+Predict --> [Study Plan Generation] : "Use predicted hours\nfor scheduling"
+
+note right of Model
+  Features:
+  - past_score (0-100)
+  - difficulty_level (0,1,2)
+  - chapters (integer)
+  - days_left (integer)
+  
+  Output:
+  - recommended_hours (float)
+end note
+
+@enduml
+```
+
+### How to Use These Diagrams
+
+1. Go to [PlantText.com](https://www.planttext.com/)
+2. Copy any of the PlantUML code blocks above
+3. Paste it into the PlantText editor
+4. The diagram will be automatically generated
+5. You can export as PNG, SVG, or PDF
 
